@@ -68,10 +68,10 @@ func (l *Limiter) Check(ctx context.Context, metric string, duration Duration) e
 func (l *Limiter) generateKeys(duration Duration) []string {
 	len := duration.Seconds()
 	keys := make([]string, len)
-	now := time.Now()
+	start := time.Now().Add(time.Duration(-len) * time.Second)
 
-	for i := 0; i < int(len); i++ {
-		key := now.Add(time.Duration(i) * time.Second).Format("20060102150405")
+	for i := 1; i <= int(len); i++ {
+		key := start.Add(time.Duration(i) * time.Second).Format("20060102150405")
 		keys[i] = key
 	}
 	return keys
