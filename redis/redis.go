@@ -13,6 +13,7 @@ import (
 type redisClient interface {
 	Get(ctx context.Context, key string) *redis.StringCmd
 	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
+	IncrBy(ctx context.Context, key string, value int64) *redis.IntCmd
 	MGet(ctx context.Context, keys ...string) *redis.SliceCmd
 }
 
@@ -33,19 +34,24 @@ func (a *adapter) Get(ctx context.Context, key string, value interface{}) error 
 	return json.Unmarshal(buff, value)
 }
 
-func (a *adapter) Set(ctx context.Context, key string, value int, exp time.Duration) error {
+func (a *adapter) Set(ctx context.Context, key string, value int64, exp time.Duration) error {
 	return a.client.Set(ctx, key, value, exp).Err()
 }
 
-func (a *adapter) SumKeys(ctx context.Context, keys []string) (int, error) {
+func (a *adapter) IncrBy(ctx context.Context, key string, value int64) error {
+	_, err := a.client.IncrBy(ctx, key, value).Result()
+	return err
+}
+
+func (a *adapter) SumKeys(ctx context.Context, keys []string) (int64, error) {
 	res, err := a.client.MGet(ctx, keys...).Result()
 	if err != nil {
 		return 0, err
 	}
 
-	var sum int
+	var sum int64
 	for _, val := range res {
-		if numVal, ok := val.(int); ok {
+		if numVal, ok := val.(int64); ok {
 			sum += numVal
 		}
 	}
