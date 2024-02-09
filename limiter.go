@@ -10,13 +10,23 @@ const (
 )
 
 type Limiter struct {
-	adapter Adapter
-	limit   int64
+	adapter     Adapter
+	limits      Limits
+	maxDuration Duration
 }
 
-func New(adapter Adapter) *Limiter {
+func New(adapter Adapter, limits Limits) *Limiter {
+	maxDuration := DurationUnknown
+	for k, _ := range limits {
+		if k > maxDuration {
+			maxDuration = k
+		}
+	}
+
 	return &Limiter{
-		adapter: adapter,
+		adapter:     adapter,
+		limits:      limits,
+		maxDuration: maxDuration,
 	}
 }
 
@@ -44,7 +54,11 @@ func (l *Limiter) Check(ctx context.Context, metric string, duration Duration) e
 		return err
 	}
 
-	if sum > l.limit {
+	if _, ok := l.limits[duration]; !ok {
+		return ErrLimitNotSet
+	}
+
+	if sum > l.limits[duration] {
 		return ErrLimitExceeded
 	}
 

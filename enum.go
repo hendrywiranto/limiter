@@ -24,3 +24,5 @@ func (d Duration) Seconds() int64 {
 		return 0
 	}
 }
+
+type Limits map[Duration]int64
