@@ -21,6 +21,10 @@ type adapter struct {
 	client redisClient
 }
 
+func NewAdapter(client redisClient) *adapter {
+	return &adapter{client: client}
+}
+
 func (a *adapter) Get(ctx context.Context, key string, value interface{}) error {
 	buff, err := a.client.Get(ctx, key).Bytes()
 	if err != nil {
