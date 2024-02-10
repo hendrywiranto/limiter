@@ -17,7 +17,7 @@ type Limiter struct {
 
 func New(adapter Adapter, limits Limits) *Limiter {
 	maxDuration := DurationUnknown
-	for k, _ := range limits {
+	for k := range limits {
 		if k > maxDuration {
 			maxDuration = k
 		}
@@ -66,11 +66,11 @@ func (l *Limiter) Check(ctx context.Context, metric string, duration Duration) e
 }
 
 func (l *Limiter) generateKeys(duration Duration) []string {
-	len := duration.Seconds()
-	keys := make([]string, len)
-	start := time.Now().Add(time.Duration(-len) * time.Second)
+	keyLen := duration.Seconds()
+	keys := make([]string, keyLen)
+	start := time.Now().Add(time.Duration(-keyLen) * time.Second)
 
-	for i := 1; i <= int(len); i++ {
+	for i := 1; i <= int(keyLen); i++ {
 		key := start.Add(time.Duration(i) * time.Second).Format("20060102150405")
 		keys[i] = key
 	}
