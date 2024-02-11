@@ -10,27 +10,25 @@ const (
 )
 
 type Limiter struct {
-	adapter     Adapter
-	limits      Limits
-	maxDuration Duration
+	adapter Adapter
+	limits  map[string]Limits
 }
 
-func New(adapter Adapter, limits Limits) *Limiter {
-	maxDuration := DurationUnknown
-	for k := range limits {
-		if k > maxDuration {
-			maxDuration = k
-		}
-	}
-
+// New returns a new Limiter instance.
+// adapter is the storage adapter.
+// limits is a map of metric name and evaluation duration with its limits.
+func New(adapter Adapter, limits map[string]Limits) *Limiter {
 	return &Limiter{
-		adapter:     adapter,
-		limits:      limits,
-		maxDuration: maxDuration,
+		adapter: adapter,
+		limits:  limits,
 	}
 }
 
 func (l *Limiter) Record(ctx context.Context, metric string, value int64) error {
+	if _, ok := l.limits[metric]; !ok {
+		return ErrMetricNotFound
+	}
+
 	now := time.Now().Format("20060102150405")
 	key := metric + ":" + now
 
@@ -47,18 +45,21 @@ func (l *Limiter) Record(ctx context.Context, metric string, value int64) error 
 }
 
 func (l *Limiter) Check(ctx context.Context, metric string, duration Duration) error {
-	keys := l.generateKeys(duration)
+	if _, ok := l.limits[metric]; !ok {
+		return ErrMetricNotFound
+	}
 
+	keys := l.generateKeys(duration)
 	sum, err := l.adapter.SumKeys(ctx, keys)
 	if err != nil {
 		return err
 	}
 
-	if _, ok := l.limits[duration]; !ok {
+	if _, ok := l.limits[metric][duration]; !ok {
 		return ErrLimitNotSet
 	}
 
-	if sum > l.limits[duration] {
+	if sum > l.limits[metric][duration] {
 		return ErrLimitExceeded
 	}
 
