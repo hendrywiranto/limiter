@@ -23,7 +23,7 @@ type RedisSuite struct {
 	adapter   *redis.Adapter
 }
 
-func TestCalculateReceiptTransactionFeeDetail(t *testing.T) {
+func TestRedis(t *testing.T) {
 	suite.Run(t, new(RedisSuite))
 }
 
@@ -44,7 +44,7 @@ func (s *RedisSuite) TestGetKeyFound() {
 	var value int64
 	err := s.adapter.Get(s.ctx, "mykey", &value)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(int64(16), value)
 }
 
@@ -54,7 +54,7 @@ func (s *RedisSuite) TestGetKeyNotFound() {
 	var value int64
 	err := s.adapter.Get(s.ctx, "mykey", &value)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.ErrorIs(err, limiter.ErrCacheMiss)
 }
 
@@ -64,7 +64,7 @@ func (s *RedisSuite) TestGetError() {
 	var value int64
 	err := s.adapter.Get(s.ctx, "mykey", &value)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.ErrorContains(err, "some error")
 }
 
@@ -75,7 +75,7 @@ func (s *RedisSuite) TestSet() {
 
 	err := s.adapter.Set(s.ctx, "mykey", 16, time.Hour)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *RedisSuite) TestSetError() {
@@ -83,7 +83,7 @@ func (s *RedisSuite) TestSetError() {
 
 	err := s.adapter.Set(s.ctx, "mykey", 16, time.Hour)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.ErrorContains(err, "some error")
 }
 
@@ -94,7 +94,7 @@ func (s *RedisSuite) TestIncrBy() {
 
 	err := s.adapter.IncrBy(s.ctx, "mykey", 16)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *RedisSuite) TestIncrByError() {
@@ -102,7 +102,7 @@ func (s *RedisSuite) TestIncrByError() {
 
 	err := s.adapter.IncrBy(s.ctx, "mykey", 16)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.ErrorContains(err, "some error")
 }
 
@@ -113,7 +113,7 @@ func (s *RedisSuite) TestSumKeys() {
 
 	sum, err := s.adapter.SumKeys(s.ctx, []string{"key1", "key2"})
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(int64(3), sum)
 }
 
@@ -122,7 +122,7 @@ func (s *RedisSuite) TestSumKeysError() {
 
 	sum, err := s.adapter.SumKeys(s.ctx, []string{"key1", "key2"})
 
-	s.Error(err)
-	s.ErrorContains(err, "some error")
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "some error")
 	s.Empty(sum)
 }
