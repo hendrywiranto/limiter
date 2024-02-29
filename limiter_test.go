@@ -91,6 +91,88 @@ func (s *LimiterSuite) TestRecordFailedHour() {
 	s.ErrorIs(err, mockedErr)
 }
 
+func (s *LimiterSuite) TestCheckMetricNotFound() {
+	err := s.l.Check(s.ctx, "unknown_metric", limiter.DurationDay)
+	s.Error(err)
+	s.ErrorIs(err, limiter.ErrMetricNotFound)
+}
+
+func (s *LimiterSuite) TestCheckDayLimitNotSet() {
+	limits := map[string]limiter.Limits{
+		"metric_test": {},
+	}
+	s.l = limiter.New(s.adapter, limits)
+	s.adapter.EXPECT().SumKeys(s.ctx, dayKeys).Return(int64(250), nil)
+
+	err := s.l.Check(s.ctx, "metric_test", limiter.DurationDay)
+	s.Error(err)
+	s.ErrorIs(err, limiter.ErrLimitNotSet)
+}
+
+func (s *LimiterSuite) TestCheckHourLimitNotSet() {
+	limits := map[string]limiter.Limits{
+		"metric_test": {},
+	}
+	s.l = limiter.New(s.adapter, limits)
+	s.adapter.EXPECT().SumKeys(s.ctx, hourKeys).Return(int64(25), nil)
+
+	err := s.l.Check(s.ctx, "metric_test", limiter.DurationHour)
+	s.Error(err)
+	s.ErrorIs(err, limiter.ErrLimitNotSet)
+}
+
+func (s *LimiterSuite) TestCheckMinuteLimitNotSet() {
+	limits := map[string]limiter.Limits{
+		"metric_test": {},
+	}
+	s.l = limiter.New(s.adapter, limits)
+	s.adapter.EXPECT().SumKeys(s.ctx, minuteKeys).Return(int64(5), nil)
+
+	err := s.l.Check(s.ctx, "metric_test", limiter.DurationMinute)
+	s.Error(err)
+	s.ErrorIs(err, limiter.ErrLimitNotSet)
+}
+
+func (s *LimiterSuite) TestCheckSecondLimitNotSet() {
+	limits := map[string]limiter.Limits{
+		"metric_test": {},
+	}
+	s.l = limiter.New(s.adapter, limits)
+	s.adapter.EXPECT().SumKeys(s.ctx, []string{"20240229231110"}).Return(int64(2), nil)
+
+	err := s.l.Check(s.ctx, "metric_test", limiter.DurationSecond)
+	s.Error(err)
+	s.ErrorIs(err, limiter.ErrLimitNotSet)
+}
+
+func (s *LimiterSuite) TestCheckDayWithinLimit() {
+	s.adapter.EXPECT().SumKeys(s.ctx, dayKeys).Return(int64(250), nil)
+
+	err := s.l.Check(s.ctx, "metric_test", limiter.DurationDay)
+	s.NoError(err)
+}
+
+func (s *LimiterSuite) TestCheckHourWithinLimit() {
+	s.adapter.EXPECT().SumKeys(s.ctx, hourKeys).Return(int64(25), nil)
+
+	err := s.l.Check(s.ctx, "metric_test", limiter.DurationHour)
+	s.NoError(err)
+}
+
+func (s *LimiterSuite) TestCheckMinuteWithinLimit() {
+	s.adapter.EXPECT().SumKeys(s.ctx, minuteKeys).Return(int64(5), nil)
+
+	err := s.l.Check(s.ctx, "metric_test", limiter.DurationMinute)
+	s.NoError(err)
+}
+
+func (s *LimiterSuite) TestCheckSecondWithinLimit() {
+	s.adapter.EXPECT().SumKeys(s.ctx, []string{"20240229231110"}).Return(int64(2), nil)
+
+	err := s.l.Check(s.ctx, "metric_test", limiter.DurationSecond)
+	s.NoError(err)
+}
+
 func (s *LimiterSuite) TestGenerateKeysDay() {
 	keys := s.l.GenerateKeys(limiter.DurationDay)
 	s.Len(keys, 142)
