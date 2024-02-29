@@ -3,7 +3,6 @@ module github.com/hendrywiranto/limiter
 go 1.21
 
 require (
-	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/golang/mock v1.6.0
 	github.com/redis/go-redis/v9 v9.2.0
