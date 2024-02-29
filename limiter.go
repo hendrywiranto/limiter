@@ -2,12 +2,11 @@ package limiter
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
 const (
-	dayHours = 24
-
 	secondFormat = "20060102150405"
 	minuteFormat = "200601021504"
 	hourFormat   = "2006010215"
@@ -37,19 +36,18 @@ func (l *Limiter) Record(ctx context.Context, metric string, value int64) error 
 		return ErrMetricNotFound
 	}
 
-	now := Now().Format(minuteFormat)
-	key := metric + ":" + now
-
-	if err := l.adapter.Get(ctx, key, nil); err == ErrCacheMiss {
-		err = l.adapter.Set(ctx, key, 0, dayHours*time.Hour)
-		if err != nil {
-			return err
-		}
-	} else {
+	now := Now()
+	if err := l.adapter.IncrBy(ctx, fmt.Sprintf("%s:%s", metric, now.Format(secondFormat)), value); err != nil {
+		return err
+	}
+	if err := l.adapter.IncrBy(ctx, fmt.Sprintf("%s:%s", metric, now.Format(minuteFormat)), value); err != nil {
+		return err
+	}
+	if err := l.adapter.IncrBy(ctx, fmt.Sprintf("%s:%s", metric, now.Format(hourFormat)), value); err != nil {
 		return err
 	}
 
-	return l.adapter.IncrBy(ctx, key, value)
+	return nil
 }
 
 func (l *Limiter) Check(ctx context.Context, metric string, duration Duration) error {
