@@ -31,6 +31,7 @@ func New(adapter Adapter, limits map[string]Limits) *Limiter {
 	}
 }
 
+// Record records the metric value.
 func (l *Limiter) Record(ctx context.Context, metric string, value int64) error {
 	if _, ok := l.limits[metric]; !ok {
 		return ErrMetricNotFound
@@ -50,6 +51,7 @@ func (l *Limiter) Record(ctx context.Context, metric string, value int64) error 
 	return nil
 }
 
+// Check checks if the metric has exceeded the limit.
 func (l *Limiter) Check(ctx context.Context, metric string, duration Duration) error {
 	if _, ok := l.limits[metric]; !ok {
 		return ErrMetricNotFound
@@ -72,6 +74,7 @@ func (l *Limiter) Check(ctx context.Context, metric string, duration Duration) e
 	return nil
 }
 
+// GenerateKeys generates the keys for the given duration.
 func (l *Limiter) GenerateKeys(duration Duration) []string {
 	keys := make([]string, 0)
 	start := Now().Add(time.Duration(-duration.Seconds()) * time.Second)

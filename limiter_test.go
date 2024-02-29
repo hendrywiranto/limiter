@@ -2,32 +2,93 @@ package limiter_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/hendrywiranto/limiter"
+	"github.com/hendrywiranto/limiter/mock"
 	"github.com/stretchr/testify/suite"
 )
 
 type LimiterSuite struct {
 	suite.Suite
+	ctrl *gomock.Controller
+	ctx  context.Context
 
-	ctx context.Context
-	l   *limiter.Limiter
+	adapter *mock.MockAdapter
+	l       *limiter.Limiter
+}
+
+func (s *LimiterSuite) SetupTest() {
+	s.ctx = context.Background()
+	s.ctrl = gomock.NewController(s.T())
+
+	s.adapter = mock.NewMockAdapter(s.ctrl)
+	limits := map[string]limiter.Limits{
+		"metric_test": {
+			limiter.DurationDay:    300,
+			limiter.DurationHour:   30,
+			limiter.DurationMinute: 10,
+			limiter.DurationSecond: 5,
+		},
+	}
+	s.l = limiter.New(s.adapter, limits)
+
+	// mock the current time to 2024-02-29 23:11:11 UTC.
+	limiter.Now = func() time.Time {
+		return time.Date(2024, 0o2, 29, 23, 11, 11, 0, time.UTC)
+	}
 }
 
 func TestLimiter(t *testing.T) {
 	suite.Run(t, new(LimiterSuite))
 }
 
-func (s *LimiterSuite) SetupTest() {
-	s.ctx = context.Background()
-	s.l = limiter.New(nil, nil)
+func (s *LimiterSuite) TestRecordAllSuccess() {
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:20240229231111", int64(10)).Return(nil)
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:202402292311", int64(10)).Return(nil)
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:2024022923", int64(10)).Return(nil)
 
-	// mock the current time to 2024-02-29 23:11:11 UTC.
-	limiter.Now = func() time.Time {
-		return time.Date(2024, 02, 29, 23, 11, 11, 0, time.UTC)
-	}
+	err := s.l.Record(s.ctx, "metric_test", 10)
+	s.NoError(err)
+}
+
+func (s *LimiterSuite) TestRecordMetricNotFound() {
+	err := s.l.Record(s.ctx, "unknown_metric", 10)
+	s.Error(err)
+	s.ErrorIs(err, limiter.ErrMetricNotFound)
+}
+
+func (s *LimiterSuite) TestRecordFailedSecond() {
+	mockedErr := errors.New("mocked error")
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:20240229231111", int64(10)).Return(mockedErr)
+
+	err := s.l.Record(s.ctx, "metric_test", 10)
+	s.Error(err)
+	s.ErrorIs(err, mockedErr)
+}
+
+func (s *LimiterSuite) TestRecordFailedMinute() {
+	mockedErr := errors.New("mocked error")
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:20240229231111", int64(10)).Return(nil)
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:202402292311", int64(10)).Return(mockedErr)
+
+	err := s.l.Record(s.ctx, "metric_test", 10)
+	s.Error(err)
+	s.ErrorIs(err, mockedErr)
+}
+
+func (s *LimiterSuite) TestRecordFailedHour() {
+	mockedErr := errors.New("mocked error")
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:20240229231111", int64(10)).Return(nil)
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:202402292311", int64(10)).Return(nil)
+	s.adapter.EXPECT().IncrBy(s.ctx, "metric_test:2024022923", int64(10)).Return(mockedErr)
+
+	err := s.l.Record(s.ctx, "metric_test", 10)
+	s.Error(err)
+	s.ErrorIs(err, mockedErr)
 }
 
 func (s *LimiterSuite) TestGenerateKeysDay() {
