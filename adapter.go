@@ -1,5 +1,7 @@
 package limiter
 
+//go:generate mockgen -source adapter.go -destination mock/adapter.go -package=mock
+
 import (
 	"context"
 	"time"

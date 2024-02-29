@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/go-redis/redis"
 	"github.com/hendrywiranto/limiter"
+	"github.com/redis/go-redis/v9"
 )
 
 type redisClient interface {
@@ -17,15 +17,15 @@ type redisClient interface {
 	MGet(ctx context.Context, keys ...string) *redis.SliceCmd
 }
 
-type adapter struct {
+type Adapter struct {
 	client redisClient
 }
 
-func NewAdapter(client redisClient) *adapter {
-	return &adapter{client: client}
+func NewAdapter(client redisClient) *Adapter {
+	return &Adapter{client: client}
 }
 
-func (a *adapter) Get(ctx context.Context, key string, value interface{}) error {
+func (a *Adapter) Get(ctx context.Context, key string, value interface{}) error {
 	buff, err := a.client.Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -38,16 +38,16 @@ func (a *adapter) Get(ctx context.Context, key string, value interface{}) error 
 	return json.Unmarshal(buff, value)
 }
 
-func (a *adapter) Set(ctx context.Context, key string, value int64, exp time.Duration) error {
+func (a *Adapter) Set(ctx context.Context, key string, value int64, exp time.Duration) error {
 	return a.client.Set(ctx, key, value, exp).Err()
 }
 
-func (a *adapter) IncrBy(ctx context.Context, key string, value int64) error {
+func (a *Adapter) IncrBy(ctx context.Context, key string, value int64) error {
 	_, err := a.client.IncrBy(ctx, key, value).Result()
 	return err
 }
 
-func (a *adapter) SumKeys(ctx context.Context, keys []string) (int64, error) {
+func (a *Adapter) SumKeys(ctx context.Context, keys []string) (int64, error) {
 	res, err := a.client.MGet(ctx, keys...).Result()
 	if err != nil {
 		return 0, err
